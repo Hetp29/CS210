@@ -16,15 +16,28 @@ def read_ratings_data(f):
     # parameter f: movie ratings file name f (e.g. "movieRatingSample.txt")
     # return: dictionary that maps movie to ratings
     # WRITE YOUR CODE BELOW
-    pass
-    
+    ratings = defaultdict(list)
+    with open(f, 'r') as file:
+        for line in file:
+            parts = line.strip().split('|') #strip whitespace 
+            name = parts[0].strip() #extract movie name
+            rating = float(parts[1]) #extract rating and convert to float
+            ratings[name].append(rating) #add rating to corresponding movie
+    return dict(ratings)    
 
 # 1.2
 def read_movie_genre(f):
     # parameter f: movies genre file name f (e.g. "genreMovieSample.txt")
     # return: dictionary that maps movie to genre
     # WRITE YOUR CODE BELOW
-    pass
+    genres = {}
+    with open(f, 'r') as file:
+        for line in file:
+            parts = line.strip().split('|') 
+            genre = parts[0].strip()
+            name = parts[2].strip()
+            genres[name] = genre
+    return genres
 
 # ------ TASK 2: PROCESSING DATA --------
 

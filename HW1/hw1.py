@@ -71,7 +71,7 @@ def get_popular_movies(d, n=10):
     #         in ranked order from highest to lowest average rating
     # WRITE YOUR CODE BELOW
     sorted_movies = sorted(d.items(), key = lambda x: x[1], reverse=True)
-    top = dict(sorted_movies)
+    top = dict(sorted_movies[:n])
     return top
     
 # 3.2
@@ -199,8 +199,60 @@ def recommend_movies(user_id, user_to_movies, movie_to_genre, movie_to_average_r
 def main():
     # write all your test code here
     # this function will be ignored by us when grading
-    pass
+    ratings_data = read_ratings_data("ratings.txt")
+    movies_genres = read_movie_genre("movies.txt")
     
+    print("Movie Ratings Dictionary:")
+    print(ratings_data)
+    
+    print("\nMovie Genre Dictionary:")
+    print(movies_genres)
+    
+    genre_to_movies = create_genre_dict(movies_genres)
+    average_ratings = calculate_average_rating(ratings_data)
+    
+    print("\nGenre-to-Movies Dictionary:")
+    print(genre_to_movies)
+    
+    print("\nMovie-to-Average Rating Dictionary:")
+    print(average_ratings)
+    
+    popular_movies = get_popular_movies(average_ratings, n=7)
+    print("\nTop 7 Popular Movies:")
+    print(popular_movies)
+    
+    filtered_movies = filter_movies(average_ratings, thres_rating=3.5)
+    print("\nMovies with Rating >= 3.5:")
+    print(filtered_movies)
+    
+    popular_in_genre = get_popular_in_genre("Adventure", genre_to_movies, average_ratings, n=3)
+    print("\nTop 3 Popular Adventure Movies:")
+    print(popular_in_genre)
+    
+    genre_rating = get_genre_rating("Comedy", genre_to_movies, average_ratings)
+    print("\nAverage Rating of Comedy Movies:")
+    print(genre_rating)
+    
+    top_genres = genre_popularity(genre_to_movies, average_ratings, n=3)
+    print("\nTop 3 Genres by Popularity:")
+    print(top_genres)
+    
+    user_ratings = read_user_ratings("ratings.txt")
+    print("\nUser Ratings Dictionary:")
+    print(user_ratings)
+    
+    top_genre_for_user = get_user_genre("1", user_ratings, movies_genres)
+    print("\nUser 1's Favorite Genre:")
+    print(top_genre_for_user)
+    
+    recommendations = recommend_movies("1", user_ratings, movies_genres, average_ratings)
+    print("\nMovie Recommendations for User 1:")
+    print(recommendations)
+
+
+
+
+
 # DO NOT write ANY CODE (including variable names) outside of any of the above functions
 # In other words, ALL code your write (including variable names) MUST be inside one of
 # the above functions

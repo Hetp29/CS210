@@ -1,97 +1,105 @@
---1. Artists: Uniquely identified by name, can have albums and singles 
---2. Songs: Have title, artist, possibly album, release date, and genres 
---3. Albums: Collection of songs by an artist with a release date 
---4. Users: Uniquely identified by username, can have playlists and give ratings 
---5. Playlists: Created by users, contain songs, have title and creation date/time
---6. Ratings: User rate albums, songs, or playlists on a scale of 1-5
+--for 10 required queries 
 
---artists table
-CREATE TABLE artists (
-    artist_id INT AUTO_INCREMENT PRIMARY KEY,
-    artist_name VARCHAR(100) NOT NULL UNIQUE
+--Which 3 genres are most represented in terms of number of songs in that genre?
+SELECT g.genre_name AS genre, COUNT(sg.song_id) AS number_of_songs
+FROM genres g
+JOIN song_genres sg ON g.genre_id = sg.genre_id
+GROUP BY g.genre_id, g.genre_name
+ORDER BY number_of_songs DESC
+LIMIT 3;
+
+--Find names of artists who have songs that are in albums as well as outside of albums (singles). 
+SELECT DISTINCT a.artist_name
+FROM artists a
+JOIN songs s ON a.artist_id = s.artist_id
+WHERE a.artist_id IN (
+    SELECT artist_id FROM songs WHERE album_id IS NOT NULL
+    INTERSECT
+    SELECT artist_id FROM songs WHERE album_id IS NULL
 );
 
---genres table (predefined genres)
-CREATE TABLE genres (
-    genre_id INT AUTO_INCREMENT PRIMARY KEY,
-    genre_name VARCHAR(50) NOT NULL UNIQUE
+--What were the top 10 most highly rated albums (highest average user rating) in the period 1990-1999?
+SELECT a.album_name, AVG(r.rating_value) AS average_user_rating
+FROM albums a
+JOIN ratings r ON a.album_id = r.album_id
+WHERE r.rating_date BETWEEN '1990-01-01' AND '1999-12-31'
+GROUP BY a.album_id, a.album_name
+ORDER BY average_user_rating DESC, a.album_name ASC
+LIMIT 10;
+
+--Which were the top 3 most rated genres in the years 1991-1995?
+SELECT g.genre_name AS genre_name, COUNT(r.rating_id) AS number_of_song_ratings
+FROM genres g
+JOIN song_genres sg ON g.genre_id = sg.genre_id
+JOIN songs s ON sg.song_id = s.song_id
+JOIN ratings r ON s.song_id = r.song_id
+WHERE r.rating_date BETWEEN '1991-01-01' AND '1995-12-31'
+GROUP BY g.genre_id, g.genre_name
+ORDER BY number_of_song_ratings DESC
+LIMIT 3;
+
+--Which users have a playlist that has an average song rating of 4.0 or more?
+SELECT u.username, p.title AS playlist_title, AVG(song_ratings.avg_rating) AS average_song_rating
+FROM users u
+JOIN playlists p ON u.user_id = p.user_id
+JOIN playlist_songs ps ON p.playlist_id = ps.playlist_id
+JOIN (
+    SELECT s.song_id, AVG(r.rating_value) AS avg_rating
+    FROM songs s
+    LEFT JOIN ratings r ON s.song_id = r.song_id
+    GROUP BY s.song_id
+) song_ratings ON ps.song_id = song_ratings.song_id
+GROUP BY u.user_id, u.username, p.playlist_id, p.title
+HAVING AVG(song_ratings.avg_rating) >= 4.0;
+
+--Who are the top 5 most engaged users in terms of number of ratings?
+SELECT u.username, COUNT(r.rating_id) AS number_of_ratings
+FROM users u
+JOIN ratings r ON u.user_id = r.user_id
+WHERE r.song_id IS NOT NULL OR r.album_id IS NOT NULL
+GROUP BY u.user_id, u.username
+ORDER BY number_of_ratings DESC
+LIMIT 5;
+
+--Find the top 10 most prolific artists in the years 1990-2010?
+SELECT a.artist_name, COUNT(s.song_id) AS number_of_songs
+FROM artists a
+JOIN songs s ON a.artist_id = s.artist_id
+WHERE (
+    (s.album_id IS NULL AND s.release_date BETWEEN '1990-01-01' AND '2010-12-31') OR
+    (s.album_id IS NOT NULL AND s.release_date BETWEEN '1990-01-01' AND '2010-12-31')
 )
+GROUP BY a.artist_id, a.artist_name
+ORDER BY number_of_songs DESC
+LIMIT 10;
 
---albums table
-CREATE TABLE albums (
-    album_id INT AUTO_INCREMENT PRIMARY KEY,
-    album_name VARCHAR(200) NOT NULL,
-    artist_id INT NOT NULL,
-    release_date DATE NOT NULL,
-    FOREIGN KEY (artist_id) REFERENCES artists(artist_id),
-    UNIQUE (album_name, artist_id)
-);
+--Find the top 10 songs that are in most number of playlists
+SELECT s.title AS song_title, COUNT(ps.playlist_id) AS number_of_playlists
+FROM songs s
+JOIN playlist_songs ps ON s.song_id = ps.song_id
+GROUP BY s.song_id, s.title
+ORDER BY number_of_playlists DESC, s.title ASC
+LIMIT 10;
 
---songs table
-CREATE TABLE songs (
-    song_id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    artist_id INT NOT NULL,
-    album_id INT NULL,  --NULL for singles
-    release_date DATE NOT NULL,
-    FOREIGN KEY (artist_id) REFERENCES artists(artist_id),
-    FOREIGN KEY (album_id) REFERENCES albums(album_id),
-    UNIQUE (title, artist_id)
-);
+--Find the top 20 most rated singles
+SELECT s.title AS song_title, a.artist_name, COUNT(r.rating_id) AS number_of_ratings
+FROM songs s
+JOIN artists a ON s.artist_id = a.artist_id
+JOIN ratings r ON s.song_id = r.song_id
+WHERE s.album_id IS NULL
+GROUP BY s.song_id, s.title, a.artist_name
+ORDER BY number_of_ratings DESC
+LIMIT 20;
 
---songs_genres junction table
-CREATE TABLE song_genres (
-    song_id INT NOT NULL,
-    genre_id INT NOT NULL,
-    PRIMARY KEY (song_id, genre_id),
-    FOREIGN KEY (song_id) REFERENCES songs(song_id),
-    FOREIGN KEY (genre_id) REFERENCES genres(genre_id)
-);
-
---users table
-CREATE TABLE users (
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE 
+--Find the names of all artists who discontinued making music after 1993
+SELECT a.artist_name
+FROM artists a
+WHERE a.artist_id NOT IN (
+    SELECT DISTINCT artist_id
+    FROM songs
+    WHERE release_date > '1993-12-31'
 )
-
---playlists table
-CREATE TABLE playlists (
-    playlist_id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    user_id INT NOT NULL,
-    created_datetime DATETIME NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    UNIQUE (user_id, title)
-);
-
---playlist_songs junction table
-CREATE TABLE playlist_songs (
-    playlist_id INT NOT NULL,
-    song_id INT NOT NULL,
-    PRIMARY KEY (playlist_id, song_id),
-    FOREIGN KEY (playlist_id) REFERENCES playlists(playlist_id),
-    FOREIGN KEY (song_id) REFERENCES songs(song_id)
-);
-
---ratings table
-CREATE TABLE ratings (
-    rating_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    rating_value INT NOT NULL CHECK (rating_value BETWEEN 1 AND 5),
-    rating_date DATE NOT NULL,
-
-    --columns identify what is being rated 
-    song_id INT NULL,
-    album_id INT NULL,
-    playlist_id INT NULL,
-
-    --ensure only one of song_id, album_id, or playlist_id is provided 
-    CHECK ((song_id IS NOT NULL AND album_id IS NULL AND playlist_id IS NULL) OR
-        (song_id IS NULL AND album_id IS NOT NULL AND playlist_id IS NULL) OR
-        (song_id IS NULL AND album_id IS NULL AND playlist_id IS NOT NULL)),
-    
-    --ensure user cannot rate the same item multiple times on the same day 
-    UNIQUE (user_id, song_id, rating_date),
-    UNIQUE (user_id, album_id, rating_date),
-    UNIQUE (user_id, playlist_id, rating_date)
+AND a.artist_id IN (
+    SELECT DISTINCT artist_id
+    FROM songs
 );
